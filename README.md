@@ -2,7 +2,7 @@
 
 A Home Assistant addon that acts as an HTTP proxy for your Fronius inverter, handling HTTP digest authentication automatically. This lets Home Assistant `rest_command` calls control the inverter without dealing with digest auth.
 
-Based on [sergioperez/fronius-auth-proxy](https://github.com/sergioperez/fronius-auth-proxy).
+Based on [sergioperez/fronius-auth-proxy](https://github.com/sergioperez/fronius-auth-proxy) & [christiaandouma/fronius-auth-proxy](https://github.com/christiaandouma/fronius-auth-proxy).
 
 ## Installation
 
@@ -27,7 +27,7 @@ Example addon configuration:
 ```yaml
 fronius_hostname: "192.168.1.100"
 fronius_port: 80
-fronius_username: "service"
+fronius_username: "technician"
 fronius_password: "your-password"
 ```
 
@@ -51,44 +51,23 @@ Once the addon is running, add a `rest_command` to your `configuration.yaml`. Th
 
 ```yaml
 input_number:
-  fronius_soft_limit:
-    name: "Fronius soft limit"
+  fronius_limit:
+    name: "Fronius limit"
     initial: 4000
     min: 150
-    max: 4000
+    max: 10000
     step: 50
 
 rest_command:
-  fronius_set_soft_limit:
-    url: "http://homeassistant:3000/request?path=/config/exportlimit/?method=save"
+  fronius_set_abs_generation_limit:
+    url: "http://homeassistant:3000/request?path=/api/config/powerunit/"
     method: POST
     content_type: application/json
     payload: >
       {
-        "powerLimits": {
-          "exportLimits": {
-            "activePower": {
-              "hardLimit": {
-                "enabled": false,
-                "powerLimit": 0
-              },
-              "mode": "entireSystem",
-              "softLimit": {
-                "enabled": true,
-                "powerLimit": {{ states('input_number.fronius_soft_limit') | int }}
-              }
-            },
-            "failSafeModeEnabled": false
-          },
-          "visualization": {
-            "exportLimits": {
-              "activePower": {
-                "displayModeHardLimit": "absolute",
-                "displayModeSoftLimit": "absolute"
-              }
-            },
-            "wattPeakReferenceValue": 4000
-          }
+        "system": {
+          "DEVICE_MODE_GENERATION_LIMIT_U16": 1,
+          "DEVICE_POWERACTIVE_GENERATION_LIMIT_F32": {{ states('input_number.fronius_limit') | int }}
         }
       }
 ```
