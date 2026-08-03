@@ -18,6 +18,8 @@ const httpRequest = (options, body) => new Promise((resolve, reject) => {
 const makeRequest = async ({ options, username, password, body }) => {
   // First request to obtain the digest challenge (expected to fail with 401)
   const challenge = await httpRequest(options);
+  log('Challenge status:', challenge.statusCode);
+  log('Challenge headers:', JSON.stringify(challenge.headers));
   const auth = digest(options.method, options.path, challenge.headers['x-www-authenticate'], `${username}:${password}`);
   log('Auth header computed');
 
