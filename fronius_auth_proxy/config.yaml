@@ -1,7 +1,7 @@
-name: "Fronius Auth Proxy"
+name: "Fronius Auth Proxy CB"
 description: "HTTP digest authentication proxy for Fronius inverters. Allows Home Assistant to control export power limits without handling digest auth."
 version: "1.4.0"
-slug: "fronius_auth_proxy"
+slug: "fronius_auth_proxy_cb"
 init: false
 arch:
   - aarch64
@@ -16,7 +16,7 @@ ports_description:
 options:
   fronius_hostname: ""
   fronius_port: 80
-  fronius_username: "service"
+  fronius_username: "technician"
   fronius_password: ""
   fronius_https: false
   fronius_reject_unauthorized: false
