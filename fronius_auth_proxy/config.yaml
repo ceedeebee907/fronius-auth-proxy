@@ -1,7 +1,9 @@
 name: "Fronius Auth Proxy CB"
-description: "HTTP digest authentication proxy for Fronius inverters. Allows Home Assistant to control export power limits without handling digest auth."
+description: "HTTP digest authentication proxy for Fronius GEN24 inverters. Allows Home Assistant to control export power limits without handling digest auth."
 version: "1.4.0"
-slug: "fronius_auth_proxy_cb"
+slug: "froniusgen24_auth_proxy"
+url: "https://github.com/ceedeebee907/fronius-auth-proxy"
+authour: "ceedeebee907"
 init: false
 arch:
   - aarch64
