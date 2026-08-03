@@ -10,9 +10,8 @@ const parseWWWAuthenticate = (header) => {
   return params;
 };
 
-const buildDigestAuth = (method, uri, wwwAuth, username, password) => {
+const buildDigestAuth = (method, uri, wwwAuth, username, password, nc = '00000001') => {
   const { realm, nonce, qop, algorithm } = parseWWWAuthenticate(wwwAuth);
-  const nc = '00000001';
   const cnonce = crypto.randomBytes(8).toString('hex');
   const uriForHash = uri.split('?')[0];
 
@@ -35,7 +34,9 @@ const httpRequest = (options, body) => new Promise((resolve, reject) => {
 });
 
 const makeRequest = async ({ options, username, password, body }) => {
-  // Step 1: Login to establish session
+  log('Connecting to:', options.hostname, options.port);
+
+  // Step 1: Get digest challenge from login endpoint
   const loginPath = `/api/commands/Login?user=${username}`;
   const loginOptions = {
     hostname: options.hostname,
@@ -52,7 +53,8 @@ const makeRequest = async ({ options, username, password, body }) => {
     throw new Error('No auth challenge received from login endpoint');
   }
 
-  const loginAuth = buildDigestAuth('GET', loginPath, loginWwwAuth, username, password);
+  // Step 2: Login with digest auth (nc=00000001)
+  const loginAuth = buildDigestAuth('GET', loginPath, loginWwwAuth, username, password, '00000001');
   const loginResult = await httpRequest({
     ...loginOptions,
     headers: { 'Authorization': loginAuth },
@@ -63,48 +65,19 @@ const makeRequest = async ({ options, username, password, body }) => {
     throw new Error(`Login failed with status ${loginResult.statusCode}`);
   }
 
-  // Capture session cookie if set
-  const cookie = loginResult.headers['set-cookie'];
-  log('Session cookie:', cookie);
+  // Step 3: Reuse same nonce for config request (nc=00000002)
+  // The inverter accepts the same nonce for subsequent requests in the same session
+  const configAuth = buildDigestAuth(options.method, options.path, loginWwwAuth, username, password, '00000002');
+  log('Config auth computed');
 
-  // Step 2: Get digest challenge for the actual endpoint
-  const challengeOptions = {
+  const authOptions = {
     ...options,
     headers: {
-      ...(cookie ? { 'Cookie': Array.isArray(cookie) ? cookie.join('; ') : cookie } : {}),
+      'Content-Type': 'application/json;charset=utf-8',
+      'Authorization': configAuth,
+      ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
     },
   };
-  const challenge = await httpRequest(challengeOptions);
-  log('Config challenge status:', challenge.statusCode);
-
-  const wwwAuth = challenge.headers['x-www-authenticate'] || challenge.headers['www-authenticate'];
-
-  let authOptions;
-  if (wwwAuth) {
-    // Normal digest flow
-    const auth = buildDigestAuth(options.method, options.path, wwwAuth, username, password);
-    log('Auth header computed:', auth);
-    authOptions = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json;charset=utf-8',
-        'Authorization': auth,
-        ...(cookie ? { 'Cookie': Array.isArray(cookie) ? cookie.join('; ') : cookie } : {}),
-        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
-      },
-    };
-  } else {
-    // No challenge — try sending with session cookie only (already authenticated via login)
-    log('No auth challenge for config endpoint, trying with session cookie only');
-    authOptions = {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json;charset=utf-8',
-        ...(cookie ? { 'Cookie': Array.isArray(cookie) ? cookie.join('; ') : cookie } : {}),
-        ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {}),
-      },
-    };
-  }
 
   const result = await httpRequest(authOptions, body);
   log('Response:', result.statusCode, result.body);
